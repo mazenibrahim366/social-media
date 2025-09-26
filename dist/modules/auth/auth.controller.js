@@ -1,0 +1,53 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const validation_middleware_1 = require("../../middleware/validation.middleware");
+const auth_service_1 = __importDefault(require("./auth.service"));
+const validators = __importStar(require("./auth.validation"));
+const router = (0, express_1.Router)();
+router.post('/signup', (0, validation_middleware_1.validation)(validators.signup), auth_service_1.default.signup);
+router.post('/login', (0, validation_middleware_1.validation)(validators.login), auth_service_1.default.login);
+router.patch('/confirmEmail', (0, validation_middleware_1.validation)(validators.confirmEmail), auth_service_1.default.confirmEmail);
+router.patch('/newConfirmEmail', (0, validation_middleware_1.validation)(validators.newConfirmEmail), auth_service_1.default.newConfirmEmail);
+router.post("/login/gmail", (0, validation_middleware_1.validation)(validators.loginByGmail), auth_service_1.default.loginByGmail);
+router.post("/signup/gmail", (0, validation_middleware_1.validation)(validators.signupByGmail), auth_service_1.default.signupByGmail);
+router.patch("/forgotPassword", (0, validation_middleware_1.validation)(validators.updatePassword), auth_service_1.default.forgotPassword);
+router.patch("/verifyForgotPassword", (0, validation_middleware_1.validation)(validators.verifyForgotPassword), auth_service_1.default.verifyForgotPassword);
+router.patch("/newConfirmPasswordOtp", (0, validation_middleware_1.validation)(validators.confirmPasswordOtp), auth_service_1.default.newConfirmPassword);
+exports.default = router;

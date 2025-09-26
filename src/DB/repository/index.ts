@@ -1,0 +1,6 @@
+export * from './chat.repository'
+export * from './comment.repository'
+export * from './friendRequest.repository'
+export * from './post.repository'
+export * from './token.repository'
+export * from './user.repository'
