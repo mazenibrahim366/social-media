@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.UserService = void 0;
 const User_model_1 = __importDefault(require("../../DB/models/User.model"));
 const repository_1 = require("../../DB/repository/");
 const mongoose_1 = require("mongoose");
@@ -17,6 +18,7 @@ const error_response_1 = require("../../utils/response/error.response");
 const success_response_1 = require("../../utils/response/success.response");
 const encryption_security_1 = require("../../utils/security/encryption.security");
 const token_security_1 = require("../../utils/security/token.security");
+const graphql_1 = require("graphql");
 class UserService {
     UserModel = new repository_1.UserRepository(User_model_1.default);
     TokenModel = new repository_1.TokenRepository(Token_model_1.default);
@@ -331,5 +333,18 @@ class UserService {
         await (0, s3_config_1.deleteFolderByPrefix)({ path: `users/${userId}` });
         return (0, success_response_1.successResponse)({ res });
     };
+    hello = async (context) => {
+        console.log(context.user);
+        return 'hello';
+    };
+    allUser = async (args, authUser) => {
+        console.log(authUser);
+        const user = await this.UserModel.find({ filter: { $ne: { _id: authUser._id } } });
+        if (!user) {
+            throw new graphql_1.GraphQLError("not matched user ");
+        }
+        return user;
+    };
 }
+exports.UserService = UserService;
 exports.default = new UserService();

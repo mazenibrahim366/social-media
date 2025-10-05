@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.postService = exports.postAvailability = void 0;
+exports.postService = exports.PostService = exports.postAvailability = exports.postAvailabilityByUser = void 0;
 const User_model_1 = __importDefault(require("../../DB/models/User.model"));
 const repository_1 = require("../../DB/repository");
 const mongoose_1 = require("mongoose");
@@ -16,6 +16,21 @@ const s3_config_1 = require("../../utils/multer/s3.config");
 const error_response_1 = require("../../utils/response/error.response");
 const success_response_1 = require("../../utils/response/success.response");
 const gateway_1 = require("../gateway");
+const postAvailabilityByUser = (user) => {
+    return [
+        { availability: models_dto_1.AvailabilityEnum.public },
+        { availability: models_dto_1.AvailabilityEnum.onlyMe, createdBy: user?._id },
+        {
+            availability: models_dto_1.AvailabilityEnum.friends,
+            createdBy: { $in: [...(user?.friend || []), user?._id] },
+        },
+        {
+            availability: { $ne: models_dto_1.AvailabilityEnum.onlyMe },
+            tag: { $in: user?._id },
+        },
+    ];
+};
+exports.postAvailabilityByUser = postAvailabilityByUser;
 const postAvailability = (req) => {
     return [
         { availability: models_dto_1.AvailabilityEnum.public },
@@ -317,5 +332,48 @@ class PostService {
             data: { posts },
         });
     };
+    allPosts = async ({ page, size }, authUser) => {
+        const posts = await this.PostModel.paginate({
+            filter: {
+                $or: (0, exports.postAvailabilityByUser)(authUser),
+            },
+            option: {
+                populate: [
+                    {
+                        path: 'createdBy',
+                    },
+                ],
+            },
+            page,
+            size,
+        });
+        if (!posts) {
+            throw new error_response_1.AppError('invalid postId or post not exist  ', 404);
+        }
+        return posts;
+    };
+    likeGraphPost = async ({ postId, action }, authUser) => {
+        let updateData = { $addToSet: { likes: authUser?.id } };
+        if (action && action == models_dto_1.LikeActionEnum.unlike) {
+            updateData = { $pull: { likes: authUser?.id } };
+        }
+        const post = await this.PostModel.findOneAndUpdate({
+            filter: {
+                _id: postId,
+                $or: (0, exports.postAvailabilityByUser)(authUser),
+            },
+            data: updateData,
+        });
+        if (!post) {
+            throw new error_response_1.AppError('invalid postId or post not exist  ', 404);
+        }
+        if (action !== models_dto_1.LikeActionEnum.unlike) {
+            (0, gateway_1.getIo)()
+                .to(gateway_1.connectedSockets.get(post.createdBy.toString()))
+                .emit('likePost', { postId, userId: authUser?._id });
+        }
+        return post;
+    };
 }
+exports.PostService = PostService;
 exports.postService = new PostService();

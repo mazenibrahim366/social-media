@@ -40,15 +40,17 @@ const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = require("dotenv");
 const express_1 = __importDefault(require("express"));
 const express_rate_limit_1 = require("express-rate-limit");
+const express_2 = require("graphql-http/lib/use/express");
 const helmet_1 = __importDefault(require("helmet"));
 const node_path_1 = require("node:path");
-const connection_db_1 = __importDefault(require("./DB/connection.db"));
-const router = __importStar(require("./modules"));
 const node_stream_1 = require("node:stream");
 const node_util_1 = require("node:util");
+const connection_db_1 = __importDefault(require("./DB/connection.db"));
+const router = __importStar(require("./modules"));
 const s3_config_1 = require("./utils/multer/s3.config");
 const error_response_1 = require("./utils/response/error.response");
 const success_response_1 = require("./utils/response/success.response");
+const authentication_middleware_1 = require("./middleware/authentication.middleware");
 const createS3WriteStreamPipe = (0, node_util_1.promisify)(node_stream_1.pipeline);
 (0, dotenv_1.config)({ path: (0, node_path_1.resolve)('./config/.env.development') });
 const bootstrap = async () => {
@@ -56,7 +58,7 @@ const bootstrap = async () => {
     const port = process.env.PORT || 5000;
     const limiter = (0, express_rate_limit_1.rateLimit)({
         windowMs: 15 * 60 * 1000,
-        limit: 1000,
+        limit: 100,
         standardHeaders: 'draft-8',
         message: { error: 'too many request please try again later ' },
         legacyHeaders: false,
@@ -67,6 +69,7 @@ const bootstrap = async () => {
     app.use(limiter);
     await (0, connection_db_1.default)();
     app.use(express_1.default.json());
+    app.all('/graphql', (0, authentication_middleware_1.authentication)(), (0, express_2.createHandler)({ schema: router.schema, context: (req) => ({ user: req.raw.user }) }));
     app.get('/', (req, res) => res.json({
         message: `welcome to ${process.env.APPLICATION_NAME} backend landing page `,
     }));

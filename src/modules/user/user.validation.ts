@@ -45,3 +45,6 @@ export const unFriend = {
     userId: generalFields.id,
   }),
 }
+export const hallo = z.strictObject({
+  name:z.string().min(2),
+})

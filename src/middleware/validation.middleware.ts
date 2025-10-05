@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
+import { GraphQLError } from 'graphql'
 import { Types } from 'mongoose'
 import z, { ZodType } from 'zod'
 import { genderEnum, logoutEnum } from '../utils/enums'
@@ -37,25 +38,27 @@ export const generalFields = {
   }),
   gender: z.enum(Object.values(genderEnum) as [string, ...string[]]),
   flag: z.enum(Object.values(logoutEnum) as [string, ...string[]]),
-  file: function (mimetype : string[]) {
-    return z.object({
-    fieldname: z.string(),
-    originalname: z.string(),
-    encoding: z.string(),
-    mimetype: z.enum(mimetype),
-    destination: z.string().optional() ,
-    filename: z.string().optional(),
-    path: z.string().optional(),
-    buffer: z.any().optional(),
-    size: z.number().positive(),
-  }).refine((data)=>{
-return  data.buffer|| data.path
-
-
-  },{error:"neither path or buffer is available" ,path :["file"]})
+  file: function (mimetype: string[]) {
+    return z
+      .object({
+        fieldname: z.string(),
+        originalname: z.string(),
+        encoding: z.string(),
+        mimetype: z.enum(mimetype),
+        destination: z.string().optional(),
+        filename: z.string().optional(),
+        path: z.string().optional(),
+        buffer: z.any().optional(),
+        size: z.number().positive(),
+      })
+      .refine(
+        (data) => {
+          return data.buffer || data.path
+        },
+        { error: 'neither path or buffer is available', path: ['file'] }
+      )
   },
 }
-
 
 // {
 // [1]     fieldname: 'attachments',
@@ -66,22 +69,21 @@ return  data.buffer|| data.path
 // [1]     size: 16808
 // [1]   }
 
-
-
-
 type KeyReqType = keyof Request
 type SchemaTypes = Partial<Record<KeyReqType, ZodType>>
 export const validation = (schema: SchemaTypes) => {
-
   return (
     req: Request,
     res: Response,
     next: NextFunction
   ): NextFunction | Response => {
-     console.log(req.body)
+    console.log(req.body)
     let error: Array<{
       key: KeyReqType
-      issues: { path: (string | number | symbol | undefined)[]; message: string }[]
+      issues: {
+        path: (string | number | symbol | undefined)[]
+        message: string
+      }[]
     }> = []
     for (const key of Object.keys(schema) as KeyReqType[]) {
       if (!schema[key]) {
@@ -99,7 +101,7 @@ export const validation = (schema: SchemaTypes) => {
         error.push({
           key,
           issues: validationResult.error.issues.map((issue) => {
-            return { path: issue.path, message: issue.message , }
+            return { path: issue.path, message: issue.message }
           }),
         })
       }
@@ -108,5 +110,23 @@ export const validation = (schema: SchemaTypes) => {
       return res.status(400).json({ message: 'validation error ', error })
     }
     return next() as unknown as NextFunction
+  }
+}
+export const GraphValidation = async <T = any>(schema: ZodType, args: T) => {
+  const validationResult = await schema.safeParseAsync(args)
+  if (!validationResult.success) {
+    const ZError = validationResult.error
+    throw new GraphQLError('validation Error', {
+      extensions: {
+        statusCode: 400,
+
+        issues: {
+          key: 'args',
+          issues: ZError.issues.map((issue) => {
+            return { path: issue.path, message: issue.message }
+          }),
+        },
+      },
+    })
   }
 }

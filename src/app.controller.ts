@@ -3,17 +3,17 @@ import { config } from 'dotenv'
 import type { Express, Request, Response } from 'express'
 import express from 'express'
 import { rateLimit } from 'express-rate-limit'
+import { createHandler } from 'graphql-http/lib/use/express'
 import helmet from 'helmet'
 import { resolve } from 'node:path'
-import ConnectionDB from './DB/connection.db'
-// import authController from './modules/auth/auth.controller'
-import * as router from './modules'
-// import userController from './modules/user/user.controller'
 import { pipeline } from 'node:stream'
 import { promisify } from 'node:util'
+import ConnectionDB from './DB/connection.db'
+import * as router from './modules'
 import { createGetPreSignedURL, getFile } from './utils/multer/s3.config'
 import { AppError, globalErrorHandling } from './utils/response/error.response'
 import { successResponse } from './utils/response/success.response'
+import { authentication } from './middleware/authentication.middleware'
 
 const createS3WriteStreamPipe = promisify(pipeline)
 config({ path: resolve('./config/.env.development') })
@@ -24,7 +24,7 @@ const bootstrap = async () => {
 
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 1000, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
+    limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes).
     standardHeaders: 'draft-8', // draft-6: `RateLimit-*` headers; draft-7 & draft-8: combined `RateLimit` header
     message: { error: 'too many request please try again later ' },
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers.
@@ -43,6 +43,8 @@ const bootstrap = async () => {
   // app router
 
   app.use(express.json())
+
+  app.all('/graphql', authentication(), createHandler({ schema: router.schema ,context: (req)=>({user:req.raw.user}) }))
   app.get('/', (req: Request, res: Response) =>
     res.json({
       message: `welcome to ${process.env.APPLICATION_NAME} backend landing page `,

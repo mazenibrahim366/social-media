@@ -28,6 +28,20 @@ import { AppError, BadError } from '../../utils/response/error.response'
 import { successResponse } from '../../utils/response/success.response'
 import { connectedSockets, getIo } from '../gateway'
 import { LikePostQueryInputDto } from './dto/post.dto'
+export const postAvailabilityByUser = (user: IUser) => {
+  return [
+    { availability: AvailabilityEnum.public },
+    { availability: AvailabilityEnum.onlyMe, createdBy: user?._id },
+    {
+      availability: AvailabilityEnum.friends,
+      createdBy: { $in: [...(user?.friend || []), user?._id] },
+    },
+    {
+      availability: { $ne: AvailabilityEnum.onlyMe },
+      tag: { $in: user?._id },
+    },
+  ]
+}
 export const postAvailability = (req: Request) => {
   return [
     { availability: AvailabilityEnum.public },
@@ -42,7 +56,7 @@ export const postAvailability = (req: Request) => {
     },
   ]
 }
-class PostService {
+export class PostService {
   private UserModel = new UserRepository(UserModels)
   private CommentModel = new CommentRepository(CommentModels)
 
@@ -384,20 +398,58 @@ class PostService {
       data: { posts },
     })
   }
+
+  // GQL
+  allPosts = async (
+    { page, size }: { page: number; size: number },
+    authUser: IUser
+  ) => {
+    const posts: any = await this.PostModel.paginate({
+      filter: {
+        $or: postAvailabilityByUser(authUser),
+      },
+      option: {
+        populate: [
+          {
+            path: 'createdBy',
+          },
+        ],
+      },
+      page,
+      size,
+    })
+    if (!posts) {
+      throw new AppError('invalid postId or post not exist  ', 404)
+    }
+    return posts
+  }
+  likeGraphPost = async (
+    { postId, action }: {  postId: string;action: LikeActionEnum; },
+    authUser: IUser
+  ) => {
+
+    let updateData: UpdateQuery<IPost> = { $addToSet: { likes: authUser?.id } }
+    if (action && action == LikeActionEnum.unlike) {
+      updateData = { $pull: { likes: authUser?.id } }
+    }
+
+    const post = await this.PostModel.findOneAndUpdate({
+      filter: {
+        _id: postId,
+        $or: postAvailabilityByUser(authUser),
+      },
+      data: updateData,
+    })
+    if (!post) {
+      throw new AppError('invalid postId or post not exist  ', 404)
+    }
+    if (action !== LikeActionEnum.unlike) {
+      getIo()
+        .to(connectedSockets.get(post.createdBy.toString()) as string[])
+        .emit('likePost', { postId, userId: authUser?._id })
+    }
+    return post
+  }
 }
 
 export const postService = new PostService()
-
-
-
-
-
-
-
-
-
-
-
-
-
-

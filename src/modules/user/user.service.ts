@@ -29,8 +29,9 @@ import {
   createRevokeToken,
   generateLoginToken,
 } from '../../utils/security/token.security'
+import { GraphQLError } from 'graphql'
 
-class UserService {
+export class UserService {
   private UserModel = new UserRepository(UserModels)
   private TokenModel = new TokenRepository(TokenModels)
   private PostModel = new PostRepository(PostModels)
@@ -390,6 +391,23 @@ class UserService {
     }
     await deleteFolderByPrefix({ path: `users/${userId}` })
     return successResponse({ res })
+  }
+  // graphql
+
+  hello = async(context: any) => {
+
+    console.log(  context.user  );
+    
+    return 'hello' 
+  }
+  allUser = async(args:any,authUser:IUser) => {
+
+    console.log(  authUser );
+   const user =  await this.UserModel.find({filter: { $ne : {_id:authUser._id}}})
+    if (!user){
+      throw new GraphQLError("not matched user ")
+    }
+    return  user
   }
 }
 

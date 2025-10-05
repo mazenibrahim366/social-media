@@ -3,7 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validation = exports.generalFields = void 0;
+exports.GraphValidation = exports.validation = exports.generalFields = void 0;
+const graphql_1 = require("graphql");
 const mongoose_1 = require("mongoose");
 const zod_1 = __importDefault(require("zod"));
 const enums_1 = require("../utils/enums");
@@ -33,7 +34,8 @@ exports.generalFields = {
     gender: zod_1.default.enum(Object.values(enums_1.genderEnum)),
     flag: zod_1.default.enum(Object.values(enums_1.logoutEnum)),
     file: function (mimetype) {
-        return zod_1.default.object({
+        return zod_1.default
+            .object({
             fieldname: zod_1.default.string(),
             originalname: zod_1.default.string(),
             encoding: zod_1.default.string(),
@@ -43,9 +45,10 @@ exports.generalFields = {
             path: zod_1.default.string().optional(),
             buffer: zod_1.default.any().optional(),
             size: zod_1.default.number().positive(),
-        }).refine((data) => {
+        })
+            .refine((data) => {
             return data.buffer || data.path;
-        }, { error: "neither path or buffer is available", path: ["file"] });
+        }, { error: 'neither path or buffer is available', path: ['file'] });
     },
 };
 const validation = (schema) => {
@@ -67,7 +70,7 @@ const validation = (schema) => {
                 error.push({
                     key,
                     issues: validationResult.error.issues.map((issue) => {
-                        return { path: issue.path, message: issue.message, };
+                        return { path: issue.path, message: issue.message };
                     }),
                 });
             }
@@ -79,3 +82,21 @@ const validation = (schema) => {
     };
 };
 exports.validation = validation;
+const GraphValidation = async (schema, args) => {
+    const validationResult = await schema.safeParseAsync(args);
+    if (!validationResult.success) {
+        const ZError = validationResult.error;
+        throw new graphql_1.GraphQLError('validation Error', {
+            extensions: {
+                statusCode: 400,
+                issues: {
+                    key: 'args',
+                    issues: ZError.issues.map((issue) => {
+                        return { path: issue.path, message: issue.message };
+                    }),
+                },
+            },
+        });
+    }
+};
+exports.GraphValidation = GraphValidation;

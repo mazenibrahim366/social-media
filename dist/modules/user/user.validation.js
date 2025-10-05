@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unFriend = exports.blockUser = exports.UnAcceptFriendRequest = exports.acceptFriendRequest = exports.changeRole = exports.sendFriendRequest = exports.freezeAccount = exports.logout = void 0;
+exports.hallo = exports.unFriend = exports.blockUser = exports.UnAcceptFriendRequest = exports.acceptFriendRequest = exports.changeRole = exports.sendFriendRequest = exports.freezeAccount = exports.logout = void 0;
 const zod_1 = __importDefault(require("zod"));
 const validation_middleware_1 = require("../../middleware/validation.middleware");
 const enums_1 = require("../../utils/enums");
@@ -50,3 +50,6 @@ exports.unFriend = {
         userId: validation_middleware_1.generalFields.id,
     }),
 };
+exports.hallo = zod_1.default.strictObject({
+    name: zod_1.default.string().min(2),
+});

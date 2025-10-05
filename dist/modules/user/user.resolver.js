@@ -32,16 +32,23 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.postAvailability = exports.typesPost = exports.argsPost = exports.postGqlSchema = exports.router = void 0;
-var post_controller_1 = require("./post.controller");
-Object.defineProperty(exports, "router", { enumerable: true, get: function () { return __importDefault(post_controller_1).default; } });
-var post_schema_gql_1 = require("./post.schema.gql");
-Object.defineProperty(exports, "postGqlSchema", { enumerable: true, get: function () { return __importDefault(post_schema_gql_1).default; } });
-exports.argsPost = __importStar(require("./post.args.gql"));
-exports.typesPost = __importStar(require("./post.typs.gql"));
-var post_service_1 = require("./post.service");
-Object.defineProperty(exports, "postAvailability", { enumerable: true, get: function () { return post_service_1.postAvailability; } });
+exports.UserResolver = void 0;
+const authentication_middleware_1 = require("../../middleware/authentication.middleware");
+const validation_middleware_1 = require("../../middleware/validation.middleware");
+const authorization_user_1 = require("./authorization.user");
+const user_service_1 = require("./user.service");
+const validators = __importStar(require("./user.validation"));
+class UserResolver {
+    userService = new user_service_1.UserService();
+    constructor() { }
+    hello = async (parent, args, context) => {
+        await (0, validation_middleware_1.GraphValidation)(validators.hallo, args);
+        await (0, authentication_middleware_1.graphAuthorization)(authorization_user_1.endPoint.hallo, context.user.role);
+        return this.userService.hello(context);
+    };
+    allUser = async (parent, args, context) => {
+        return await this.userService.allUser(args, context.user);
+    };
+}
+exports.UserResolver = UserResolver;
